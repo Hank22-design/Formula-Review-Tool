@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartStudy AI 學習與公式複習神器</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- MathJax for rendering LaTeX formulas -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* 3D Card Flip Animation */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(107, 114, 128, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-300">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-40 w-full backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/30">
+                    <i class="fa-solid fa-brain text-xl"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-500 to-indigo-600">SmartStudy AI</span>
+                    <span class="hidden sm:inline-block text-xs text-slate-400 ml-2 px-2 py-0.5 rounded-full border border-slate-300 dark:border-slate-700">v2.5 Pro</span>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="hidden md:flex space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                <button onclick="switchTab('formulas')" id="nav-formulas" class="nav-btn px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-sm">
+                    <i class="fa-solid fa-book-open mr-1.5"></i>公式檢索
+                </button>
+                <button onclick="switchTab('quiz')" id="nav-quiz" class="nav-btn px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                    <i class="fa-solid fa-vial mr-1.5"></i>AI 隨堂測驗
+                </button>
+                <button onclick="switchTab('pomodoro')" id="nav-pomodoro" class="nav-btn px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                    <i class="fa-solid fa-stopwatch mr-1.5"></i>專注計時器
+                </button>
+                <button onclick="switchTab('notes')" id="nav-notes" class="nav-btn px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                    <i class="fa-solid fa-pen-to-square mr-1.5"></i>筆記與進度
+                </button>
+            </nav>
+
+            <!-- Quick Controls -->
+            <div class="flex items-center space-x-3">
+                <button id="themeToggle" onclick="toggleTheme()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-moon dark:hidden"></i>
+                    <i class="fa-solid fa-sun hidden dark:inline"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Bottom Bar -->
+        <div class="md:hidden flex justify-around border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-2">
+            <button onclick="switchTab('formulas')" id="m-nav-formulas" class="m-nav-btn text-xs font-medium text-sky-500 flex flex-col items-center">
+                <i class="fa-solid fa-book-open text-base mb-1"></i>公式
+            </button>
+            <button onclick="switchTab('quiz')" id="m-nav-quiz" class="m-nav-btn text-xs font-medium text-slate-500 flex flex-col items-center">
+                <i class="fa-solid fa-vial text-base mb-1"></i>測驗
+            </button>
+            <button onclick="switchTab('pomodoro')" id="m-nav-pomodoro" class="m-nav-btn text-xs font-medium text-slate-500 flex flex-col items-center">
+                <i class="fa-solid fa-stopwatch text-base mb-1"></i>計時
+            </button>
+            <button onclick="switchTab('notes')" id="m-nav-notes" class="m-nav-btn text-xs font-medium text-slate-500 flex flex-col items-center">
+                <i class="fa-solid fa-pen-to-square text-base mb-1"></i>筆記
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- TAB 1: Formula Explorer -->
+        <section id="tab-formulas" class="space-y-6">
+            <!-- Search and Filter Header -->
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/60">
+                <div class="relative w-full md:w-96">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" oninput="filterFormulas()" placeholder="搜尋公式名稱、關鍵字或符號..." 
+                        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm">
+                </div>
+                <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                    <button onclick="setCategory('all')" class="cat-btn active px-3.5 py-2 rounded-xl text-xs font-semibold bg-sky-500 text-white shadow-sm transition">全部</button>
+                    <button onclick="setCategory('calculus')" class="cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">微積分</button>
+                    <button onclick="setCategory('physics')" class="cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">普通物理</button>
+                    <button onclick="setCategory('circuit')" class="cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">電路學</button>
+                </div>
+            </div>
+
+            <!-- Formula Grid Container -->
+            <div id="formulaGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Formula Cards will be dynamically generated by JS -->
+            </div>
+        </section>
+
+        <!-- TAB 2: AI Quiz Builder -->
+        <section id="tab-quiz" class="hidden max-w-3xl mx-auto space-y-6">
+            <!-- Setup Card -->
+            <div id="quiz-setup" class="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/60 text-center space-y-6">
+                <div class="w-16 h-16 bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 rounded-2xl flex items-center justify-center mx-auto text-2xl">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">AI 隨堂重點測驗</h2>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">選擇科目並測試你的觀念理解程度！</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left max-w-md mx-auto">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">測驗科目</label>
+                        <select id="quiz-subject" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500">
+                            <option value="all">混合科目 (綜合考驗)</option>
+                            <option value="calculus">微積分 Calculus</option>
+                            <option value="physics">普通物理 Physics</option>
+                            <option value="circuit">電路學 Circuit Theory</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">題目數量</label>
+                        <select id="quiz-count" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500">
+                            <option value="3">3 題 (快速複習)</option>
+                            <option value="5">5 題 (標準挑戰)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="startQuiz()" class="px-8 py-3 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-sky-500/25 transition transform active:scale-95">
+                    <i class="fa-solid fa-play mr-2"></i>開始測驗
+                </button>
+            </div>
+
+            <!-- Active Quiz Container -->
+            <div id="quiz-active" class="hidden bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/60 space-y-6">
+                <div class="flex justify-between items-center pb-4 border-b border-slate-200 dark:border-slate-700">
+                    <span id="quiz-progress-text" class="text-xs font-semibold text-sky-500 uppercase tracking-wider">問題 1 / 3</span>
+                    <span id="quiz-timer" class="text-xs bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full text-slate-600 dark:text-slate-300 font-mono">
+                        <i class="fa-regular fa-clock mr-1"></i><span id="q-time">00:00</span>
+                    </span>
+                </div>
+
+                <div id="quiz-question-container" class="space-y-4">
+                    <h3 id="quiz-question" class="text-lg font-semibold text-slate-900 dark:text-white leading-relaxed">題目加載中...</h3>
+                    <div id="quiz-options" class="space-y-3 pt-2">
+                        <!-- Options generated dynamically -->
+                    </div>
+                </div>
+
+                <div id="quiz-feedback" class="hidden p-4 rounded-xl text-sm font-medium"></div>
+
+                <div class="flex justify-end pt-2">
+                    <button id="quiz-next-btn" onclick="nextQuestion()" class="hidden px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl transition">
+                        下一題 <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quiz Result View -->
+            <div id="quiz-result" class="hidden bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/60 text-center space-y-6">
+                <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto text-3xl shadow-inner bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">測驗完成！</h2>
+                    <p class="text-slate-500 text-sm mt-1">這長久累積的努力將化為實力！</p>
+                </div>
+                <div class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-indigo-600" id="quiz-score">
+                    80 / 100
+                </div>
+                <p id="quiz-summary" class="text-sm text-slate-600 dark:text-slate-300 max-w-sm mx-auto">太棒了！答對了 4/5 題。</p>
+                <button onclick="resetQuiz()" class="px-6 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-medium rounded-xl transition">
+                    重新進行測驗
+                </button>
+            </div>
+        </section>
+
+        <!-- TAB 3: Pomodoro Study Timer -->
+        <section id="tab-pomodoro" class="hidden max-w-xl mx-auto">
+            <div class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/60 text-center space-y-8">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">學習專注計時器</h2>
+                    <p class="text-xs text-slate-500 mt-1">蕃茄鐘工作法：專注 25 分鐘，休息 5 分鐘</p>
+                </div>
+
+                <!-- Timer Ring Display -->
+                <div class="relative w-64 h-64 mx-auto flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="44" stroke="currentColor" stroke-width="6" class="text-slate-100 dark:text-slate-700" fill="transparent"/>
+                        <circle id="timer-progress" cx="50" cy="50" r="44" stroke="currentColor" stroke-width="6" class="text-sky-500 transition-all duration-1000" fill="transparent" stroke-dasharray="276.46" stroke-dashoffset="0" stroke-linecap="round"/>
+                    </svg>
+                    <div class="absolute flex flex-col items-center">
+                        <span id="timer-display" class="text-5xl font-black tracking-tighter text-slate-900 dark:text-white font-mono">25:00</span>
+                        <span id="timer-mode-label" class="text-xs font-semibold uppercase tracking-widest text-sky-500 mt-2">專注階段</span>
+                    </div>
+                </div>
+
+                <!-- Timer Controls -->
+                <div class="flex justify-center items-center space-x-4">
+                    <button id="pomo-toggle" onclick="toggleTimer()" class="w-14 h-14 bg-sky-500 hover:bg-sky-600 text-white rounded-full flex items-center justify-center text-xl shadow-lg shadow-sky-500/30 transition transform active:scale-95">
+                        <i id="pomo-icon" class="fa-solid fa-play ml-0.5"></i>
+                    </button>
+                    <button onclick="resetTimer()" class="w-12 h-12 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-full flex items-center justify-center transition">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+
+                <!-- Mode Selector -->
+                <div class="flex justify-center space-x-2 pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                    <button onclick="setTimerMode('work')" id="mode-work" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400">專注 25m</button>
+                    <button onclick="setTimerMode('break')" id="mode-break" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500">短休 5m</button>
+                    <button onclick="setTimerMode('longBreak')" id="mode-longBreak" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500">長休 15m</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: Notes and Tracker -->
+        <section id="tab-notes" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Notes Section -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/60 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center">
+                        <i class="fa-solid fa-book-bookmark text-sky-500 mr-2"></i>複習筆記
+                    </h2>
+                    <span class="text-xs text-slate-400">自動儲存於 LocalStorage</span>
+                </div>
+
+                <div class="space-y-3">
+                    <input type="text" id="note-title" placeholder="筆記標題..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <textarea id="note-content" rows="4" placeholder="在此輸入重點公式推導或個人記憶口訣..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"></textarea>
+                    <button onclick="addNote()" class="w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl text-sm transition">
+                        <i class="fa-solid fa-plus mr-1"></i>新增筆記
+                    </button>
+                </div>
+
+                <div id="notes-list" class="space-y-3 pt-4 max-h-80 overflow-y-auto">
+                    <!-- Dynamic Notes -->
+                </div>
+            </div>
+
+            <!-- Todo Tracker Section -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/60 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center">
+                        <i class="fa-solid fa-list-check text-indigo-500 mr-2"></i>學習進度與待辦
+                    </h2>
+                    <span id="todo-stats" class="text-xs font-semibold text-slate-400">0/0 完成</span>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="todo-input" placeholder="新增今日學習目標 (例如: 微積分卡片複習)" onkeypress="if(event.key==='Enter') addTodo()" class="flex-grow bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button onclick="addTodo()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl text-sm transition">
+                        加入
+                    </button>
+                </div>
+
+                <div id="todo-list" class="space-y-2 pt-2 max-h-96 overflow-y-auto">
+                    <!-- Dynamic Todos -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Custom Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 translate-y-20 opacity-0 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 transition-all duration-300 z-50">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 dark:text-emerald-600"></i>
+        <span id="toast-msg" class="text-sm font-medium">提示訊息</span>
+    </div>
+
+    <!-- Application JavaScript Logic -->
+    <script>
+        // --- 1. DATA SOURCES ---
+        const formulaData = [
+            {
+                id: 'c1',
+                category: 'calculus',
+                title: '微積分基本定理',
+                sub: 'Fundamental Theorem of Calculus',
+                latex: '\xFF\\int_{a}^{b} f(x) dx = F(b) - F(a)',
+                plainFormula: '\\int_{a}^{b} f(x) dx = F(b) - F(a)',
+                desc: '連接口積份與微分的橋樑，說明定積分可透過求反導函數 F(x) 在邊界的值相減求得。',
+                example: '計算 ∫₀² x dx = [x²/2]₀² = (4/2) - 0 = 2。'
+            },
+            {
+                id: 'c2',
+                category: 'calculus',
+                title: '泰勒級數展開',
+                sub: 'Taylor Series Expansion',
+                latex: 'f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x-a)^n',
+                plainFormula: 'f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x-a)^n',
+                desc: '利用函數在某一點的各階導函數值，將複雜函數表示為無窮多項式之和。',
+                example: 'e^x 在 x=0 展開為 1 + x + x²/2! + x³/3! + ...'
+            },
+            {
+                id: 'p1',
+                category: 'physics',
+                title: '牛頓第二運動定律',
+                sub: 'Newton\'s Second Law',
+                latex: '\\vec{F} = m \\vec{a} = \\frac{d\\vec{p}}{dt}',
+                plainFormula: '\\vec{F} = m \\vec{a}',
+                desc: '物體所受的合外力等於其質量與加速度的乘積，亦等於動量隨時間的變化率。',
+                example: '質量 2kg 物體受到 10N 合力，加速度 a = 10/2 = 5 m/s²。'
+            },
+            {
+                id: 'p2',
+                category: 'physics',
+                title: '麥克斯韋方程組 - 高斯定律',
+                sub: 'Gauss\'s Law for Electricity',
+                latex: '\\Phi_E = \\oint \\vec{E} \\cdot d\\vec{A} = \\frac{Q_{encl}}{\\varepsilon_0}',
+                plainFormula: '\\oint \\vec{E} \\cdot d\\vec{A} = \\frac{Q_{encl}}{\\varepsilon_0}',
+                desc: '通過任何閉合曲面的電通量與該曲面所包圍的淨電荷量成正比。',
+                example: '點電荷 Q 距離 r 處的電場 E = Q / (4πε₀r²)。'
+            },
+            {
+                id: 'e1',
+                category: 'circuit',
+                title: '歐姆定律',
+                sub: 'Ohm\'s Law',
+                latex: 'V = I \\cdot R',
+                plainFormula: 'V = I \\cdot R',
+                desc: '導體兩端的電壓 V 與通過導體的電流 I 成正比，比例常數為電阻 R。',
+                example: '電阻 10 Ω 通過 2A 電流，兩端電壓 V = 2 * 10 = 20V。'
+            },
+            {
+                id: 'e2',
+                category: 'circuit',
+                title: '基爾霍夫電流定律 (KCL)',
+                sub: 'Kirchhoff\'s Current Law',
+                latex: '\\sum_{k=1}^{n} I_k = 0',
+                plainFormula: '\\sum I_{in} = \\sum I_{out}',
+                desc: '流入電路中任何節點的電流總和等於流出該節點的電流總和（電荷守恆）。',
+                example: '節點流入 5A 與 3A，則流出電流必為 8A。'
+            }
+        ];
+
+        const quizQuestions = [
+            {
+                subject: 'calculus',
+                question: '請問微積分中，函數 f(x) = x³ 的一階導函數 f\'(x) 為何？',
+                options: ['3x²', 'x²/3', '3x³', '6x'],
+                answer: 0,
+                explanation: '根據多項式微分法則 d(xⁿ)/dx = n·xⁿ⁻¹，d(x³)/dx = 3x²。'
+            },
+            {
+                subject: 'physics',
+                question: '若物體做等速圓周運動，其受力與加速度方向為何？',
+                options: ['沿切線方向', '指向圓心', '背離圓心', '不受力'],
+                answer: 1,
+                explanation: '等速圓周運動的速度方向改變，產生指向圓心的向心加速度與向心力。'
+            },
+            {
+                subject: 'circuit',
+                question: '將兩個 10 Ω 的電阻進行「並聯」後，等效總電阻為多少？',
+                options: ['20 Ω', '10 Ω', '5 Ω', '2.5 Ω'],
+                answer: 2,
+                explanation: '兩相同電阻 R 並聯公式為 Req = R / 2 = 10 / 2 = 5 Ω。'
+            },
+            {
+                subject: 'calculus',
+                question: '∫ e^(2x) dx 的不定積分結果為何？',
+                options: ['2e^(2x) + C', '(1/2)e^(2x) + C', 'e^(2x) + C', '(1/2)e^x + C'],
+                answer: 1,
+                explanation: '利用換元積分法，d(e^(2x))/dx = 2e^(2x)，因此積分需乘以 1/2。'
+            },
+            {
+                subject: 'physics',
+                question: '根據歐姆定律，當電阻不變時，增加電壓會使電流產生什麼變化？',
+                options: ['成正比增加', '成反比減少', '保持不變', '變為平方倍'],
+                answer: 0,
+                explanation: '由 V = IR 可得 I = V / R，電流與電壓成正比。'
+            }
+        ];
+
+        // --- 2. STATE MANAGEMENT ---
+        let currentCategory = 'all';
+        let currentQuizList = [];
+        let currentQuizIndex = 0;
+        let quizScore = 0;
+        let quizTimerInterval = null;
+        let quizSeconds = 0;
+
+        // Pomodoro State
+        let pomoTime = 25 * 60;
+        let pomoMaxTime = 25 * 60;
+        let pomoInterval = null;
+        let isPomoRunning = false;
+
+        // LocalStorage State
+        let userNotes = JSON.parse(localStorage.getItem('smartstudy_notes') || '[]');
+        let userTodos = JSON.parse(localStorage.getItem('smartstudy_todos') || '[]');
+
+        // --- 3. INIT & NAVIGATION ---
+        window.onload = function() {
+            renderFormulas();
+            renderNotes();
+            renderTodos();
+            
+            // Check Theme Preference
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+        };
+
+        function switchTab(tabId) {
+            // Hide all tabs
+            ['formulas', 'quiz', 'pomodoro', 'notes'].forEach(id => {
+                document.getElementById(`tab-${id}`).classList.add('hidden');
+            });
+            // Show selected
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            // Style nav buttons Desktop
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+            });
+            const activeDesktopBtn = document.getElementById(`nav-${tabId}`);
+            if(activeDesktopBtn) {
+                activeDesktopBtn.className = "nav-btn px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-sm";
+            }
+
+            // Style nav buttons Mobile
+            document.querySelectorAll('.m-nav-btn').forEach(btn => {
+                btn.className = "m-nav-btn text-xs font-medium text-slate-500 flex flex-col items-center";
+            });
+            const activeMobileBtn = document.getElementById(`m-nav-${tabId}`);
+            if(activeMobileBtn) {
+                activeMobileBtn.className = "m-nav-btn text-xs font-medium text-sky-500 flex flex-col items-center";
+            }
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            showToast('主題切換成功！');
+        }
+
+        // --- 4. FORMULA CARD LOGIC ---
+        function setCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.className = "cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition";
+            });
+            event.target.className = "cat-btn active px-3.5 py-2 rounded-xl text-xs font-semibold bg-sky-500 text-white shadow-sm transition";
+            filterFormulas();
+        }
+
+        function filterFormulas() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = formulaData.filter(item => {
+                const matchCat = (currentCategory === 'all' || item.category === currentCategory);
+                const matchQuery = item.title.toLowerCase().includes(query) || 
+                                   item.sub.toLowerCase().includes(query) || 
+                                   item.desc.toLowerCase().includes(query);
+                return matchCat && matchQuery;
+            });
+            renderFormulas(filtered);
+        }
+
+        function renderFormulas(data = formulaData) {
+            const grid = document.getElementById('formulaGrid');
+            grid.innerHTML = '';
+
+            if (data.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass text-3xl mb-3 opacity-50"></i>
+                        <p>未找到符合條件的公式，請嘗試搜尋其他關鍵字。</p>
+                    </div>`;
+                return;
+            }
+
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "perspective-1000 h-64 cursor-pointer group";
+                card.onclick = () => flipCard(card);
+
+                card.innerHTML = `
+                    <div class="card-inner relative w-full h-full transform-style-3d rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800 transition-all duration-300 hover:shadow-md">
+                        <!-- Front Face -->
+                        <div class="absolute inset-0 backface-hidden p-6 flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md ${getBadgeColor(item.category)}">
+                                        ${getCategoryLabel(item.category)}
+                                    </span>
+                                    <span class="text-xs text-slate-400"><i class="fa-solid fa-rotate mr-1"></i>點擊翻轉</span>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-900 dark:text-white mt-1">${item.title}</h3>
+                                <p class="text-xs text-slate-400 font-medium">${item.sub}</p>
+                            </div>
+                            
+                            <!-- Formula Display -->
+                            <div class="my-auto text-center py-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl px-2">
+                                <div class="text-lg font-mono text-sky-600 dark:text-sky-400 overflow-x-auto">
+                                    \\[ ${item.plainFormula} \\]
+                                </div>
+                            </div>
+
+                            <div class="text-xs text-right text-slate-400 font-medium">觀看解釋與例題 &rarr;</div>
+                        </div>
+
+                        <!-- Back Face -->
+                        <div class="absolute inset-0 backface-hidden rotate-y-180 p-6 flex flex-col justify-between bg-slate-900 text-white rounded-2xl">
+                            <div>
+                                <div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2">
+                                    <span class="text-xs font-semibold text-sky-400">觀念解析</span>
+                                    <i class="fa-solid fa-lightbulb text-amber-400 text-xs"></i>
+                                </div>
+                                <p class="text-xs leading-relaxed text-slate-300 mt-2">${item.desc}</p>
+                            </div>
+
+                            <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700/50">
+                                <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">應用範例</span>
+                                <p class="text-xs text-slate-300 font-mono">${item.example}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            // Trigger MathJax re-render
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        function flipCard(cardEl) {
+            const inner = cardEl.querySelector('.card-inner');
+            inner.classList.toggle('rotate-y-180');
+        }
+
+        function getCategoryLabel(cat) {
+            switch(cat) {
+                case 'calculus': return '微積分';
+                case 'physics': return '普通物理';
+                case 'circuit': return '電路學';
+                default: return '綜合';
+            }
+        }
+
+        function getBadgeColor(cat) {
+            switch(cat) {
+                case 'calculus': return 'bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-400';
+                case 'physics': return 'bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400';
+                case 'circuit': return 'bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400';
+                default: return 'bg-slate-100 text-slate-600';
+            }
+        }
+
+        // --- 5. QUIZ SYSTEM LOGIC ---
+        function startQuiz() {
+            const sub = document.getElementById('quiz-subject').value;
+            const count = parseInt(document.getElementById('quiz-count').value);
+
+            let filtered = quizQuestions;
+            if (sub !== 'all') {
+                filtered = quizQuestions.filter(q => q.subject === sub);
+            }
+
+            if(filtered.length === 0) {
+                showToast('該科目暫無足夠題目');
+                return;
+            }
+
+            // Shuffle and slice
+            currentQuizList = [...filtered].sort(() => 0.5 - Math.random()).slice(0, count);
+            currentQuizIndex = 0;
+            quizScore = 0;
+            quizSeconds = 0;
+
+            document.getElementById('quiz-setup').classList.add('hidden');
+            document.getElementById('quiz-result').classList.add('hidden');
+            document.getElementById('quiz-active').classList.remove('hidden');
+
+            startQuizTimer();
+            renderQuestion();
+        }
+
+        function startQuizTimer() {
+            clearInterval(quizTimerInterval);
+            quizTimerInterval = setInterval(() => {
+                quizSeconds++;
+                const mins = String(Math.floor(quizSeconds / 60)).padStart(2, '0');
+                const secs = String(quizSeconds % 60).padStart(2, '0');
+                document.getElementById('q-time').innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function renderQuestion() {
+            const q = currentQuizList[currentQuizIndex];
+            document.getElementById('quiz-progress-text').innerText = `問題 ${currentQuizIndex + 1} / ${currentQuizList.length}`;
+            document.getElementById('quiz-question').innerText = q.question;
+            
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+
+            const feedback = document.getElementById('quiz-feedback');
+            feedback.classList.add('hidden');
+            document.getElementById('quiz-next-btn').classList.add('hidden');
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition font-medium text-sm flex items-center justify-between";
+                btn.innerHTML = `<span><span class="inline-block w-6 text-slate-400 font-bold">${String.fromCharCode(65+idx)}.</span> ${opt}</span>`;
+                btn.onclick = () => checkAnswer(idx, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedIdx, btnEl) {
+            const q = currentQuizList[currentQuizIndex];
+            const options = document.getElementById('quiz-options').children;
+
+            // Disable all options
+            for (let btn of options) {
+                btn.disabled = true;
+                btn.classList.add('cursor-not-allowed', 'opacity-70');
+            }
+
+            const feedback = document.getElementById('quiz-feedback');
+            feedback.classList.remove('hidden');
+
+            if (selectedIdx === q.answer) {
+                quizScore++;
+                btnEl.className = "w-full text-left p-3.5 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-medium text-sm flex items-center justify-between";
+                feedback.className = "p-4 rounded-xl text-sm font-medium bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800";
+                feedback.innerHTML = `<i class="fa-solid fa-circle-check mr-2 text-emerald-500"></i><b>回答正確！</b> ${q.explanation}`;
+            } else {
+                btnEl.className = "w-full text-left p-3.5 rounded-xl border-2 border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-medium text-sm flex items-center justify-between";
+                options[q.answer].className = "w-full text-left p-3.5 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-medium text-sm flex items-center justify-between";
+                
+                feedback.className = "p-4 rounded-xl text-sm font-medium bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-800";
+                feedback.innerHTML = `<i class="fa-solid fa-circle-xmark mr-2 text-rose-500"></i><b>解答錯誤！</b> ${q.explanation}`;
+            }
+
+            document.getElementById('quiz-next-btn').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentQuizIndex++;
+            if (currentQuizIndex < currentQuizList.length) {
+                renderQuestion();
+            } else {
+                finishQuiz();
+            }
+        }
+
+        function finishQuiz() {
+            clearInterval(quizTimerInterval);
+            document.getElementById('quiz-active').classList.add('hidden');
+            document.getElementById('quiz-result').classList.remove('hidden');
+
+            const percent = Math.round((quizScore / currentQuizList.length) * 100);
+            document.getElementById('quiz-score').innerText = `${percent} 分`;
+            document.getElementById('quiz-summary').innerText = `答對了 ${quizScore} / ${currentQuizList.length} 題，總耗時 ${document.getElementById('q-time').innerText}。`;
+        }
+
+        function resetQuiz() {
+            document.getElementById('quiz-result').classList.add('hidden');
+            document.getElementById('quiz-setup').classList.remove('hidden');
+        }
+
+        // --- 6. POMODORO TIMER LOGIC ---
+        function updateTimerDisplay() {
+            const mins = Math.floor(pomoTime / 60);
+            const secs = pomoTime % 60;
+            document.getElementById('timer-display').innerText = 
+                `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            
+            // Progress Ring Calculation
+            const circle = document.getElementById('timer-progress');
+            const circumference = 2 * Math.PI * 44; // r=44
+            const offset = circumference - (pomoTime / pomoMaxTime) * circumference;
+            circle.style.strokeDashoffset = offset;
+        }
+
+        function toggleTimer() {
+            const icon = document.getElementById('pomo-icon');
+            if (isPomoRunning) {
+                clearInterval(pomoInterval);
+                isPomoRunning = false;
+                icon.className = "fa-solid fa-play ml-0.5";
+            } else {
+                isPomoRunning = true;
+                icon.className = "fa-solid fa-pause";
+                pomoInterval = setInterval(() => {
+                    if (pomoTime > 0) {
+                        pomoTime--;
+                        updateTimerDisplay();
+                    } else {
+                        clearInterval(pomoInterval);
+                        isPomoRunning = false;
+                        icon.className = "fa-solid fa-play ml-0.5";
+                        showToast('時間到！休息一下或開始新專注！');
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(pomoInterval);
+            isPomoRunning = false;
+            document.getElementById('pomo-icon').className = "fa-solid fa-play ml-0.5";
+            pomoTime = pomoMaxTime;
+            updateTimerDisplay();
+        }
+
+        function setTimerMode(mode) {
+            document.querySelectorAll('#tab-pomodoro button[id^="mode-"]').forEach(btn => {
+                btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500";
+            });
+            document.getElementById(`mode-${mode}`).className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400";
+
+            if (mode === 'work') {
+                pomoMaxTime = 25 * 60;
+                document.getElementById('timer-mode-label').innerText = "專注階段";
+            } else if (mode === 'break') {
+                pomoMaxTime = 5 * 60;
+                document.getElementById('timer-mode-label').innerText = "短暫休息";
+            } else if (mode === 'longBreak') {
+                pomoMaxTime = 15 * 60;
+                document.getElementById('timer-mode-label').innerText = "充分休息";
+            }
+            resetTimer();
+        }
+
+        // --- 7. NOTES & TODOS LOCALSTORAGE LOGIC ---
+        function addNote() {
+            const titleInput = document.getElementById('note-title');
+            const contentInput = document.getElementById('note-content');
+
+            if (!titleInput.value.trim() || !contentInput.value.trim()) {
+                showToast('請輸入筆記標題與內容');
+                return;
+            }
+
+            const newNote = {
+                id: Date.now(),
+                title: titleInput.value.trim(),
+                content: contentInput.value.trim(),
+                date: new Date().toLocaleDateString('zh-TW')
+            };
+
+            userNotes.unshift(newNote);
+            localStorage.setItem('smartstudy_notes', JSON.stringify(userNotes));
+
+            titleInput.value = '';
+            contentInput.value = '';
+            renderNotes();
+            showToast('筆記已儲存！');
+        }
+
+        function deleteNote(id) {
+            userNotes = userNotes.filter(n => n.id !== id);
+            localStorage.setItem('smartstudy_notes', JSON.stringify(userNotes));
+            renderNotes();
+            showToast('筆記已刪除');
+        }
+
+        function renderNotes() {
+            const list = document.getElementById('notes-list');
+            list.innerHTML = '';
+
+            if (userNotes.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">尚未新增任何筆記。</p>`;
+                return;
+            }
+
+            userNotes.forEach(n => {
+                const item = document.createElement('div');
+                item.className = "p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700/60 flex justify-between items-start space-x-3";
+                item.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200">${n.title}</h4>
+                            <span class="text-[10px] text-slate-400">${n.date}</span>
+                        </div>
+                        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">${n.content}</p>
+                    </div>
+                    <button onclick="deleteNote(${n.id})" class="text-slate-400 hover:text-rose-500 transition text-xs p-1">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todo-input');
+            if (!input.value.trim()) return;
+
+            const newTodo = {
+                id: Date.now(),
+                text: input.value.trim(),
+                completed: false
+            };
+
+            userTodos.unshift(newTodo);
+            localStorage.setItem('smartstudy_todos', JSON.stringify(userTodos));
+            input.value = '';
+            renderTodos();
+            showToast('目標已新增！');
+        }
+
+        function toggleTodo(id) {
+            userTodos = userTodos.map(t => t.id === id ? {...t, completed: !t.completed} : t);
+            localStorage.setItem('smartstudy_todos', JSON.stringify(userTodos));
+            renderTodos();
+        }
+
+        function deleteTodo(id) {
+            userTodos = userTodos.filter(t => t.id !== id);
+            localStorage.setItem('smartstudy_todos', JSON.stringify(userTodos));
+            renderTodos();
+        }
+
+        function renderTodos() {
+            const list = document.getElementById('todo-list');
+            list.innerHTML = '';
+
+            const completedCount = userTodos.filter(t => t.completed).length;
+            document.getElementById('todo-stats').innerText = `${completedCount}/${userTodos.length} 完成`;
+
+            if (userTodos.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">目前沒有待辦事項。</p>`;
+                return;
+            }
+
+            userTodos.forEach(t => {
+                const item = document.createElement('div');
+                item.className = "flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700/60";
+                item.innerHTML = `
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTodo(${t.id})" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-xs font-medium ${t.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}">${t.text}</span>
+                    </label>
+                    <button onclick="deleteTodo(${t.id})" class="text-slate-400 hover:text-rose-500 transition text-xs p-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // --- 8. UTILS ---
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
